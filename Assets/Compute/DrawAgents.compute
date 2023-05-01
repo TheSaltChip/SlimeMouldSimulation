@@ -1,0 +1,18 @@
+﻿#include "Structs/Agent.hlsl"
+
+RWStructuredBuffer<Agent> Agents;
+uint NumAgents;
+
+RWTexture2D<float4> TargetTexture;
+
+#pragma kernel DrawAgents
+
+[numthreads(16,1,1)]
+void DrawAgents(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= NumAgents) return;
+
+    Agent agent = Agents[id.x];
+    
+    TargetTexture[int2(agent.position.x, agent.position.y)] = 1;
+}

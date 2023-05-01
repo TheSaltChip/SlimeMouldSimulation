@@ -16,8 +16,11 @@ namespace Util
             Depth24 = 24
         }
 
-        public static readonly GraphicsFormat RGBA_SFloat = GraphicsFormat.R32G32B32A32_SFloat;
-
+        public const GraphicsFormat RGBA_SFloat = GraphicsFormat.R32G32B32A32_SFloat;
+        public const GraphicsFormat DefaultGraphicsFormat = GraphicsFormat.R16G16B16A16_SFloat;
+        
+        private static ComputeShader _clearTextureCompute;
+        
         #region ComputeShaders
 
         /// Convenience method for dispatching a compute shader.
@@ -29,6 +32,7 @@ namespace Util
             var numGroupsX = CeilToInt(numIterationsX / (float)threadGroupSizes.x);
             var numGroupsY = CeilToInt(numIterationsY / (float)threadGroupSizes.y);
             var numGroupsZ = CeilToInt(numIterationsZ / (float)threadGroupSizes.y);
+
             cs.Dispatch(kernelIndex, numGroupsX, numGroupsY, numGroupsZ);
         }
 
@@ -259,6 +263,19 @@ namespace Util
             texture.wrapMode = wrapMode;
             texture.filterMode = FilterMode.Bilinear;
             texture.name = name;
+        }
+
+        public static void ClearRenderTexture(RenderTexture source)
+        {
+            if (_clearTextureCompute == null)
+            {
+                _clearTextureCompute = Resources.Load<ComputeShader>("ClearTexture");
+            }
+            
+            _clearTextureCompute.SetInt("width", source.width);
+            _clearTextureCompute.SetInt("height", source.height);
+            _clearTextureCompute.SetTexture(0, "Source", source);
+            Dispatch(_clearTextureCompute, source.width, source.height);
         }
 
         #endregion
