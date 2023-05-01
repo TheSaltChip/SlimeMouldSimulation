@@ -1,0 +1,58 @@
+#include "Random/Random.hlsl"
+
+#define TWO_PI 6.28318530718f
+
+struct Agent
+{
+    float2 position;
+    float angle;
+};
+
+RWStructuredBuffer<Agent> agents;
+RWTexture2D<float4> TrailMap;
+
+uint numAgents;
+float moveSpeed;
+float deltaTime;
+
+uint width;
+uint height;
+
+#pragma kernel Update
+[numthreads(16,1,1)]
+void Update(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= numAgents)
+        return;
+
+    SetSeed(id.x);
+
+    Agent agent = agents[id.x];
+
+    float2 direction = float2(cos(agent.angle), sin(agent.angle));
+    float2 newPos = agent.position + direction * moveSpeed * deltaTime;
+
+    if (newPos.x < 0 || newPos.x >= width || newPos.y < 0 || newPos.y >= height)
+    {
+        newPos.x = min(width - 0.01, max(0, newPos.x));
+        newPos.y = min(height - 0.01, max(0, newPos.y));
+
+        agents[id.x].angle = Random() * TWO_PI;
+    }
+    agents[id.x].position = newPos;
+    TrailMap[int2(newPos.x, newPos.y)] = 1;
+}
+
+#pragma kernel ProcessTrailMap
+
+float evaporateSpeed;
+RWTexture2D<float4> ProcessedTrailMap;
+
+[numthreads(8,8,1)]
+void ProcessTrailMap(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x < 0 || id.x >= width || id.y < 0 || id.y >= height)
+        return;
+    
+    ProcessedTrailMap[id.xy] = max(0, TrailMap[id.xy] - evaporateSpeed * deltaTime);
+}
